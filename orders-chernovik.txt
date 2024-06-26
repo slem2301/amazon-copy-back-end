@@ -1,0 +1,272 @@
+import { Injectable } from '@nestjs/common'
+import * as bePaid from 'node-bepaid'
+import { PrismaService } from 'src/prisma.service'
+import { returnProductObject } from 'src/product/return-product.object'
+import SHA1 from 'src/utils/sha1'
+import webPay from '../utils/webpay-payments'
+import { OrderDto } from './order.dto'
+
+const bepaid = new bePaid({
+	shop_id: process.env.SHOP_ID,
+	shop_key: process.env.SHOP_KEY
+})
+
+const webpay = new webPay({
+	shop_id: process.env.SHOP_ID,
+	shop_key: process.env.SHOP_KEY
+})
+
+// const crypto = this.crypto || require('crypto').webcrypto;
+
+@Injectable()
+export class OrderService {
+	constructor(private prisma: PrismaService) {}
+
+	async getAll(userId: number) {
+		const orders = this.prisma.order.findMany({
+			where: {
+				userId
+			},
+			orderBy: {
+				createdAt: 'desc'
+			},
+			include: {
+				items: {
+					include: {
+						product: {
+							select: returnProductObject
+						}
+					}
+				}
+			}
+		})
+
+		const orderGet = await webpay
+			.capturePayment(
+				'34',
+				`https://sandbox.webpay.by/api/v1/transactions/info/332016426`
+			)
+			.then(function (res) {
+				return res
+			})
+		return orderGet
+	}
+
+	async placeOrder(dto: OrderDto, userId: number) {
+		const total = dto.items.reduce((acc, item) => {
+			return acc + item.price * item.quantity
+		}, 0)
+		// const total = 0
+
+		const itemsPrice = dto.items.map(item => {
+			return item.price
+		})
+		const itemsName = dto.items.map(item => {
+			return item.name
+		})
+		const itemsQuantity = dto.items.map(item => {
+			return item.quantity
+		})
+
+		function randomInteger(min, max) {
+			// получить случайное число от (min-0.5) до (max+0.5)
+			const rand = min - 0.5 + Math.random() * (max - min + 1)
+			return Math.round(rand)
+		}
+
+		const seedRandom = randomInteger(1000000, 9999999)
+
+		const order = await this.prisma.order.create({
+			data: {
+				status: dto.status,
+				items: {
+					create: dto.items
+				},
+				total,
+				user: {
+					connect: {
+						id: userId
+					}
+				}
+			}
+		})
+
+		// let uid = ''
+		// const payment = await bepaid
+		// 	.createEripPayment(
+		// 		{
+		// 			amount: total,
+		// 			currency: 'BYN',
+		// 			description: `Order ${order.id}`,
+		// 			tracking_id: order.id,
+		// 			return_url: 'http://localhost:3000',
+		// 			language: 'en',
+		// 			test: true,
+		// 			ip: '127.0.0.1',
+		// 			payment_method: 'card',
+		// 			billing_address: {
+		// 				first_name: 'John',
+		// 				last_name: 'Doe',
+		// 				country: 'US',
+		// 				city: 'Denver',
+		// 				state: 'CO',
+		// 				zip: '96002',
+		// 				address: '1st Street'
+		// 			},
+		// 			credit_card: {
+		// 				number: '4200000000000000',
+		// 				verification_value: '123',
+		// 				holder: 'John Doe',
+		// 				exp_month: '06',
+		// 				exp_year: '2023'
+		// 			},
+		// 			customer: {
+		// 				ip: '127.0.0.1',
+		// 				email: 'john@example.com'
+		// 			},
+		// 			account_number: 'account_number',
+		// 			service_no: 'service_no',
+		// 			email: 'test@test.ru',
+		// 			notification_url: 'http://merchant.example.com'
+		// 		},
+		// 		'https://gateway.bepaid.by/transactions/authorizations'
+		// 	)
+		// 	.then(function (res) {
+		// 		// console.log(res['transaction']['uid'])
+		// 		return res
+		// 	})
+
+		// const createToken = bepaid
+		// 	.createToken(
+		// 		{
+		// 			test: true,
+		// 			transaction_type: 'payment',
+		// 			version: 2,
+		// 			attempts: 3,
+		// 			settings: {
+		// 				return_url: 'http://localhost:3000/thanks',
+		// 				success_url: 'http://localhost:3000/success',
+		// 				decline_url: 'http://localhost:3000/decline',
+		// 				fail_url: 'http://localhost:3000/fail',
+		// 				cancel_url: 'http://localhost:3000/cancel',
+		// 				notification_url: 'http://localhost:3000',
+		// 				button_text: 'Привязать карту',
+		// 				button_next_text: 'Вернуться в магазин',
+		// 				language: 'en',
+		// 				customer_fields: {
+		// 					visible: ['first_name', 'last_name', 'phone', 'email']
+		// 					// read_only: ['email']
+		// 				},
+		// 				credit_card_fields: {
+		// 					holder: 'Rick Astley',
+		// 					read_only: ['holder']
+		// 				}
+		// 			},
+		// 			payment_method: {
+		// 				types: ['credit_card']
+		// 			},
+		// 			order: {
+		// 				amount: total,
+		// 				currency: 'BYN',
+		// 				description: 'This is a test order'
+		// 			}
+		// 			// customer: {
+		// 			// 	email: 'test@test.ru'
+		// 			// }
+		// 		},
+		// 		'https://checkout.bepaid.by/ctp/api/checkouts'
+		// 	)
+		// 	.then(function (res) {
+		// 		// return res.checkout.redirect_url
+		// 		return res
+		// 		console.log(res)
+		// 	})
+
+		const payment = await webpay.createPayment(
+			{
+				wsb_storeid: process.env.SHOP_ID,
+				wsb_order_num: order.id,
+				wsb_currency_id: 'BYN',
+				wsb_version: 2,
+				wsb_seed: seedRandom,
+				wsb_test: 1,
+				wsb_invoice_item_name: itemsName,
+				wsb_invoice_item_quantity: itemsQuantity,
+				wsb_invoice_item_price: itemsPrice,
+				wsb_total: total,
+				wsb_signature: SHA1(
+					`${seedRandom}${process.env.SHOP_ID}${order.id}1BYN${total}${process.env.SHOP_KEY}`
+				),
+				wsb_3ds_payment_option: 'force_3ds',
+				wsb_store: 'Название Вашего магазина',
+				wsb_language_id: 'russian',
+				wsb_return_url: 'http://localhost:3000/thanks',
+				wsb_cancel_return_url: 'http://localhost:3000/cancel.php',
+				wsb_customer_name: 'Иванов Петр Петрович',
+				wsb_customer_address: 'Минск ул. Шафарнянская д.11 оф.54',
+				wsb_service_date: 'Доставка до 1 января 2022 года',
+				wsb_tax: 0,
+				wsb_shipping_name: 'Стоимость доставки',
+				wsb_shipping_price: 0,
+				wsb_discount_name: 'Скидка на товар',
+				wsb_discount_price: 0,
+				wsb_order_tag: 'Договор №152/12-1 от 12.01.19',
+				wsb_email: 'ivanov@test.by',
+				wsb_phone: '375291234567',
+				wsb_order_contract: 'Договор №152/12-1 от 12.01.19',
+				wsb_tab: 'cardPayment'
+			},
+			'https://securesandbox.webpay.by/api/v1/payment'
+		)
+
+		// const getByOrder = bepaid
+		// 	.getEripPaymentByOrder(order.id, 'https://api.bepaid.by/beyag/payments/')
+		// 	.then(function (res) {
+		// 		console.log(res)
+		// 		return res
+		// 	})
+
+		// const getByUid = bepaid
+		// 	.getEripPaymentByUid(
+		// 		'92a1036a-5e15-4ef6-b14c-3ea68a09cd9d',
+		// 		'https://api.bepaid.by/beyag/payments/'
+		// 	)
+		// 	.then(function (res) {
+		// 		console.log(res)
+		// 		return res
+		// 	})
+
+		// const deletePayment = bepaid
+		// 	.deleteEripPayment('uid', 'https://api.bepaid.by/beyag/payments/')
+		// 	.then(function (res) {
+		// 		console.log(res)
+		// 		return res
+		// 	})
+
+		console.log(dto)
+		return { payment }
+	}
+	async updateStatus(dto) {
+		if (dto.event === 'payment.waiting_for_capture') {
+		}
+		const payment = await webpay.capturePayment('34')
+		if (dto.event === 'payment.succeeded') {
+			return true
+		}
+
+		return { payment }
+	}
+
+	async getByOrder(orderId) {
+		const order = await webpay
+			.getByOrder(
+				'34',
+				`https://sandbox.webpay.by/api/v1/transactions/info/${orderId}`
+			)
+			.then(function (res) {
+				console.log(res)
+				return res
+			})
+		return order
+	}
+}
