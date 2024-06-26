@@ -6,7 +6,18 @@ async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
 
 	const prismaService = app.get(PrismaService)
-	await prismaService.enableShutdownHooks(app)
+	// await prismaService.enableShutdownHooks(app)
+
+	// Добавьте обработчики событий к объекту process
+	process.on('SIGINT', async () => {
+		await prismaService.$disconnect()
+		process.exit(0)
+	})
+
+	process.on('SIGTERM', async () => {
+		await prismaService.$disconnect()
+		process.exit(0)
+	})
 
 	// const storage = multer.diskStorage({
 	// 	destination: './uploads/products',
