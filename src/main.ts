@@ -26,7 +26,7 @@ async function bootstrap() {
 	// 		extended: true
 	// 	})
 	// )
-	// app.use(upload.any())
+	// app.use(upload.any())sd
 
 	app.setGlobalPrefix('api')
 	app.enableCors()
