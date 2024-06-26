@@ -1,0 +1,33 @@
+# N_6K_FqupCMl
+name: Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - master # Запускать при пуше в ветку main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Archive project files
+        run: zip -r project.zip ./*
+
+      - name: Upload to cPanel
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          ftp-server: ftp.benzox.by
+          ftp-username: ${{ secrets.FTP_USERNAME }}
+          ftp-password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: project.zip
+          server-dir: /path
