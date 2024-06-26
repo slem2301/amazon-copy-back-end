@@ -14,6 +14,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+
       - name: Install dependencies
         run: npm install
 
@@ -21,7 +24,7 @@ jobs:
         run: npm run build
 
       - name: Archive project files
-        run: zip -r project.zip ./*
+        run: zip -r project.zip dist/*
 
       - name: Upload to cPanel
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
