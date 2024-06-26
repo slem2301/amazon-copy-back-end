@@ -18,10 +18,10 @@ jobs:
         uses: actions/setup-node@v4
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Build project
-        run: pnpm build
+        run: npm build
 
       - name: Archive project files
         run: zip -r project.zip dist/*
