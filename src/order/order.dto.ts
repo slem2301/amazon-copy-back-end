@@ -12,7 +12,7 @@ import {
 export class OrderDto {
 	@IsOptional()
 	@IsEnum(EnumOrderStatus)
-	status?: EnumOrderStatus // Make status optional
+	status?: EnumOrderStatus
 
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -32,7 +32,7 @@ export class OrderItemDto {
 
 	@IsOptional()
 	@IsString()
-	name?: string // Make name optional
+	name?: string
 }
 
 export class OrderIdDto {
