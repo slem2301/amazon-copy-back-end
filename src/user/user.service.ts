@@ -4,7 +4,7 @@ import {
 	NotFoundException
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { hash } from 'argon2'
+import * as bcrypt from 'bcrypt'
 import { PrismaService } from 'src/prisma.service'
 import { returnUserObject } from './return-user.object'
 import { UserDto } from './user.dto'
@@ -64,7 +64,9 @@ export class UserService {
 				name: dto.name,
 				avatarPath: dto.avatarPath,
 				phone: dto.phone,
-				password: dto.password ? await hash(dto.password) : user.password
+				password: dto.password
+					? await bcrypt.hash(dto.password, 10)
+					: user.password
 			}
 		})
 	}

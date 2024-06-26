@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { User } from '@prisma/client'
-import { hash, verify } from 'argon2'
+// import { hash, verify } from 'argon2'
+import * as bcrypt from 'bcrypt'
 import { PrismaService } from 'src/prisma.service'
 import { UserService } from 'src/user/user.service'
 import { AuthDto } from './dto/auth.dto'
@@ -59,7 +60,7 @@ export class AuthService {
 				name: faker.person.firstName(),
 				avatarPath: faker.image.avatar(),
 				phone: faker.phone.number('+375 (##) ###-##-##'),
-				password: await hash(dto.password)
+				password: await bcrypt.hash(dto.password, 10)
 			}
 		})
 
@@ -102,7 +103,7 @@ export class AuthService {
 
 		if (!user) throw new NotFoundException('User not found')
 
-		const isValid = await verify(user.password, dto.password)
+		const isValid = await bcrypt.compare(dto.password, user.password)
 
 		if (!isValid) throw new UnauthorizedException('Invalid Password')
 
