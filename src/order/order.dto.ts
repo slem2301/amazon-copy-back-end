@@ -8,6 +8,7 @@ import {
 	IsString,
 	ValidateNested
 } from 'class-validator'
+console.log(EnumOrderStatus) // Добавьте эту строку для проверки
 
 export class OrderDto {
 	@IsOptional()
