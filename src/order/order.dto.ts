@@ -11,7 +11,7 @@ import {
 
 export class OrderDto {
 	@IsOptional()
-	@IsEnum(EnumOrderStatus)
+	@IsEnum(EnumOrderStatus, { each: true })
 	status?: EnumOrderStatus
 
 	@IsArray()
